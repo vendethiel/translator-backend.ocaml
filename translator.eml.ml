@@ -3,20 +3,38 @@ open Ppx_yojson_conv_lib.Yojson_conv.Primitives
 module type DB = Caqti_lwt.CONNECTION
 module T = Caqti_type
 
-type project_id = int [@@deriving yojson]
+module ProjectObject = struct
+  type id = int [@@deriving yojson]
 
-type project_object = {
-  id : project_id;
-  name : string;
-} [@@deriving yojson]
+  type t = {
+    id : id;
+    name : string;
+  } [@@deriving yojson]
 
-type project_api = {
-  name : string;
-} [@@deriving yojson]
+  let from_tuple (id, name) =
+    { id; name }
+end
 
+module ProjectApi = struct
+  type t = {
+    name : string;
+  } [@@deriving yojson]
 
-let to_project_object (id, name) =
-  { id; name }
+  let to_object id { name } = ProjectObject.from_tuple (id, name)
+end
+
+module TaskObject = struct
+  type id = int [@@deriving yojson]
+
+  type t = {
+    id : id;
+    project_id : ProjectObject.id;
+    key : string;
+  } [@@deriving yojson]
+
+  let from_tuple (id, project_id, key) =
+    { id; project_id; key }
+end
 
 let list_projects =
   let query =
@@ -26,7 +44,7 @@ let list_projects =
   fun (module Db : DB) ->
     let%lwt projects_or_error = Db.collect_list query () in
     let%lwt projects = Caqti_lwt.or_fail projects_or_error in
-    Lwt.return @@ List.map to_project_object projects
+    Lwt.return @@ List.map ProjectObject.from_tuple projects
 
 let find_project =
   let query =
@@ -36,8 +54,17 @@ let find_project =
   fun id (module Db : DB) ->
     let%lwt project_or_error = Db.find query id in
     let%lwt project = Caqti_lwt.or_fail project_or_error in
-    Lwt.return @@ to_project_object project
+    Lwt.return @@ ProjectObject.from_tuple project
 
+let list_tasks =
+  let query =
+    let open Caqti_request.Infix in
+    T.(int ->* tup3 int int string)
+    "SELECT rowid, project_id, key FROM task WHERE project_id = $1" in
+  fun project_id (module Db : DB) ->
+    let%lwt tasks_or_error = Db.collect_list query project_id in
+    let%lwt tasks = Caqti_lwt.or_fail tasks_or_error in
+    Lwt.return @@ List.map TaskObject.from_tuple tasks
 
 let cors_middleware handler req =
   let handlers =
@@ -63,7 +90,7 @@ let () =
     Dream.get "/projects" (fun request ->
       let%lwt projects = Dream.sql request list_projects in
       projects
-      |> yojson_of_list yojson_of_project_object
+      |> yojson_of_list ProjectObject.yojson_of_t
       |> Yojson.Safe.to_string
       |> Dream.json);
 
@@ -75,19 +102,20 @@ let () =
       | Some id ->
           let%lwt project = Dream.sql request (find_project id) in
           project
-          |> yojson_of_project_object
+          |> ProjectObject.yojson_of_t
           |> Yojson.Safe.to_string
           |> Dream.json);
 
     Dream.post "/projects" (fun request ->
       let%lwt body = Dream.body request in
-      let project_object =
+      let project_api =
         body
         |> Yojson.Safe.from_string
-        |> project_object_of_yojson
+        |> ProjectApi.t_of_yojson
       in
-      project_object
-      |> yojson_of_project_object
+      project_api
+      |> ProjectApi.to_object 0
+      |> ProjectObject.yojson_of_t
       |> Yojson.Safe.to_string
       |> Dream.json);
   ]
