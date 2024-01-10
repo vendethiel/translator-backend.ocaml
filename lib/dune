@@ -1,0 +1,13 @@
+(library
+ (name translator)
+ (libraries
+  caqti
+  caqti-lwt
+  caqti-driver-sqlite3
+  dream)
+ (preprocess (pps lwt_ppx ppx_yojson_conv)))
+
+;(rule
+; (targets translator.ml)
+; (deps translator.eml.ml)
+; (action (run dream_eml %{deps} --workspace %{workspace_root})))
