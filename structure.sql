@@ -3,7 +3,7 @@ create table project (
 );
 
 create table task (
-  project_id references project (rowid),
-  key text not null,
-  translations not null jsonb
+  project_id int references project (rowid),
+  name text not null,
+  translations text not null -- jsonb in postgresql
 );
