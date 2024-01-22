@@ -49,4 +49,18 @@ let start_server () =
           |> yojson_of_list Task_object.yojson_of_t
           |> Yojson.Safe.to_string
           |> Dream.json);
+
+    Dream.get "/projects/:project_id/tasks/:id" (fun request ->
+      let project_id_param = Dream.param request "project_id" in
+      let id_param = Dream.param request "id" in
+      match int_of_string_opt project_id_param, int_of_string_opt id_param with
+      | Some project_id, Some id ->
+          let%lwt task = Dream.sql request (Task_object.find project_id id) in
+          task
+          |> Task_object.yojson_of_t
+          |> Yojson.Safe.to_string
+          |> Dream.json
+      | _ ->
+          Dream.empty `Bad_Request
+          );
   ]

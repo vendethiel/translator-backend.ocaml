@@ -13,7 +13,7 @@ module Translations = struct
   let yojson_of_map xs = `Assoc (List.map (function (k, v) -> (k, `String v)) @@ bindings xs)
   let map_of_yojson = function
   | `Assoc xs -> of_list @@ List.map (function
-    | (k, `String v) -> (k, v)
+    | k, `String v -> (k, v)
     | _ -> raise @@ WrongTranslationFormat "Expected a string value") xs
   | _ -> raise @@ WrongTranslationFormat "Expected an assoc"
 end
@@ -36,6 +36,15 @@ let list =
   fun project_id (module Db : DB) ->
     let%lwt tasks_or_error = Db.collect_list query project_id in
     Lwt.map (List.map from_tuple) @@ Caqti_lwt.or_fail tasks_or_error
+
+let find =
+  let query =
+    let open Caqti_request.Infix in
+    T.(tup2 int int ->! tup4 int int string string)
+    "SELECT rowid, project_id, name, translations FROM task WHERE project_id = $1 AND rowid = $2" in
+  fun project_id id (module Db : DB) ->
+    let%lwt task_or_error = Db.find query (project_id, id) in
+    Lwt.map from_tuple @@ Caqti_lwt.or_fail task_or_error
 
 let translate =
   let query =
