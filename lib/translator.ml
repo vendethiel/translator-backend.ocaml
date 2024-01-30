@@ -26,6 +26,7 @@ let start_server () =
           |> Dream.json);
 
     Dream.post "/projects" (fun request ->
+      (* TODO *)
       let%lwt body = Dream.body request in
       let project_api =
         body
@@ -61,6 +62,21 @@ let start_server () =
           |> Yojson.Safe.to_string
           |> Dream.json
       | _ ->
-          Dream.empty `Bad_Request
-          );
+          Dream.empty `Bad_Request);
+
+    Dream.post "/projects/:project_id/tasks/:id/lang/:lang" (fun request ->
+      let project_id_param = Dream.param request "project_id" in
+      let id_param = Dream.param request "id" in
+      let lang_key = Dream.param request "lang" in
+      match int_of_string_opt project_id_param, int_of_string_opt id_param with
+      | Some project_id, Some id ->
+          let%lwt value = Dream.body request in
+          let%lwt () = Dream.sql request (Task_object.translate id lang_key value) in
+          let%lwt task = Dream.sql request (Task_object.find project_id id) in
+          task
+          |> Task_object.yojson_of_t
+          |> Yojson.Safe.to_string
+          |> Dream.json
+      | _ ->
+          Dream.empty `Bad_Request);
   ]

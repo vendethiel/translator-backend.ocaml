@@ -53,5 +53,5 @@ let translate =
     (* we'll have to make sure the key is a simple key and can't be tore down further *)
     "UPDATE task SET translations = json_set(translations, '$.' || $1, $2) WHERE rowid = $3" in
   fun task_id lang_code translation (module Db : DB) ->
-    let%lwt result = Db.exec query (task_id, lang_code, translation) in
+    let%lwt result = Db.exec query (lang_code, translation, task_id) in
     Caqti_lwt.or_fail result
