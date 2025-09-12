@@ -5,14 +5,22 @@ module type DB = Caqti_lwt.CONNECTION
 module T = Caqti_type
 
 type id = int [@@deriving yojson]
-type t = { id : id; email : string; token : string } [@@deriving yojson]
 
-let from_tuple (id, email, token) = { id; email; token }
+type t = {
+  id : id;
+  organization_id : Organization_object.id option; [@key "organizationId"]
+  email : string;
+  token : string;
+}
+[@@deriving yojson]
+
+let from_tuple (id, organization_id, email, token) =
+  { id; organization_id; email; token }
 
 let by_token =
   let query =
     let open Caqti_request.Infix in
-    T.(string ->! tup3 int string string)
+    T.(string ->! tup4 int (option int) string string)
       "SELECT rowid, email, token FROM user WHERE token = $1"
   in
   fun token (module Db : DB) ->

@@ -48,8 +48,9 @@ let list =
   let query =
     let open Caqti_request.Infix in
     T.(int ->* tup4 int int string string)
-      "SELECT rowid, project_id, name, translations FROM task WHERE project_id \
-       = $1"
+      "SELECT rowid, project_id, name, translations\n\
+       FROM task WHERE\n\
+       project_id = $1"
   in
   fun project_id (module Db : DB) ->
     let%lwt tasks_or_error = Db.collect_list query project_id in
@@ -59,8 +60,9 @@ let find =
   let query =
     let open Caqti_request.Infix in
     T.(tup2 int int ->! tup4 int int string string)
-      "SELECT rowid, project_id, name, translations FROM task WHERE project_id \
-       = $1 AND rowid = $2"
+      "SELECT rowid, project_id, name, translations\n\
+       FROM task WHERE\n\
+       project_id = $1 AND rowid = $2"
   in
   fun project_id id (module Db : DB) ->
     let%lwt task_or_error = Db.find query (project_id, id) in
@@ -71,7 +73,8 @@ let translate =
     let open Caqti_request.Infix in
     T.(tup3 string string int ->. unit)
       (* we'll have to make sure the key is a simple key and can't be torn down further *)
-      "UPDATE task SET translations = json_set(translations, '$.' || $1, $2) \
+      "UPDATE task\n\
+       SET translations = json_set(translations, '$.' || $1, $2)\n\
        WHERE rowid = $3"
   in
   fun task_id lang_code translation (module Db : DB) ->
