@@ -19,10 +19,8 @@ let routes =
          (options (param_int "project_id")
             (options (param_int "id") (param "lang")))
          (fun request (project_id, (id, lang_key)) ->
-           let* value = Dream.body request in
-           let* () =
-             Dream.sql request (Task_object.translate id lang_key value)
-           in
+           let%lwt value = Dream.body request in
+           Dream.sql request (Task_object.translate id lang_key value);%lwt
            let+ task = Dream.sql request (Task_object.find project_id id) in
            task |> Task_object.yojson_of_t);
   ]
